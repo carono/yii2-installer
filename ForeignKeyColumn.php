@@ -9,37 +9,120 @@
 namespace carono\yii2installer;
 
 
+use yii\db\Migration as BaseMigration;
 
-use yii\db\ColumnSchema;
-
-class ForeignKeyColumn extends ColumnSchema
+class ForeignKeyColumn
 {
     const FK_CASCADE = 'CASCADE';
     const FK_DEFAULT = 'SET DEFAULT';
     const FK_NULL = 'SET NULL';
-    public $onDelete = self::FK_CASCADE;
-    public $onUpdate = null;
-    public $table;
-    public $columnName = null;
+    public $_onDelete = self::FK_CASCADE;
+    public $_onUpdate = null;
+    protected $_refTable = null;
+    protected $_refColumn = null;
+    protected $_sourceTable = null;
+    protected $_sourceColumn = null;
+    /**
+     * @var BaseMigration
+     */
+    public $migrate;
+
+    public function getName()
+    {
+        return Migration::formFkName(
+            $this->getSourceTable(), $this->getSourceColumn(), $this->getRefTable(), $this->getRefColumn()
+        );
+    }
+
+    public function apply()
+    {
+        return $this->migrate->addForeignKey(
+            $this->getName(), $this->getSourceTable(), $this->getSourceColumn(), $this->getRefTable(), $this->getRefColumn(),
+            $this->getOnDelete(), $this->getOnUpdate()
+        );
+    }
+
+    public function getRefTable()
+    {
+        return $this->_refTable;
+    }
+
+    public function getRefColumn()
+    {
+        if (!$this->_refColumn && $this->migrate) {
+            $pk = $this->migrate->db->getTableSchema($this->getRefTable())->primaryKey;
+            $this->refColumn(current($pk));
+        }
+        return $this->_refColumn;
+    }
+
+    public function getSourceTable()
+    {
+        return $this->_sourceTable;
+    }
+
+    public function getSourceColumn()
+    {
+        return $this->_sourceColumn;
+    }
+
+    public function getOnDelete()
+    {
+        return $this->_onDelete;
+    }
+
+    public function getOnUpdate()
+    {
+        return $this->_onUpdate;
+    }
+
+    public function onDelete($string)
+    {
+        $this->_onDelete = $string;
+        return $this;
+    }
 
     public function onDeleteCascade()
     {
-        $this->onDelete = self::FK_CASCADE;
+        return $this->onDelete(self::FK_CASCADE);
     }
 
     public function onDeleteNull()
     {
-        $this->onDelete = self::FK_NULL;
+        return $this->onDelete(self::FK_NULL);
     }
 
     public function onDeleteDefault()
     {
-        $this->onDelete = self::FK_DEFAULT;
+        $this->_onDelete = self::FK_DEFAULT;
     }
 
-    public function __construct($table, $columnName = null)
+    public function refTable($name)
     {
-        $this->table = $table;
-        $this->columnName = $columnName ? $columnName : $table . "_id";
+        $this->_refTable = $name;
+        return $this;
+    }
+
+    public function sourceColumn($name)
+    {
+        $this->_sourceColumn = $name;
+        return $this;
+    }
+
+    /**
+     * @param $name
+     *
+     * @return $this
+     */
+    public function sourceTable($name)
+    {
+        $this->_sourceTable = $name;
+        return $this;
+    }
+
+    public function refColumn($name)
+    {
+        $this->_refColumn = $name;
+        return $this;
     }
 }
