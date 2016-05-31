@@ -3,6 +3,7 @@ namespace carono\yii2installer;
 
 use yii\db\ColumnSchemaBuilder;
 use yii\db\Migration as BaseMigration;
+use yii\helpers\ArrayHelper;
 
 
 class Migration extends BaseMigration
@@ -152,9 +153,9 @@ class Migration extends BaseMigration
         return [];
     }
 
-    public function upNewTables($array = [])
+    public function upNewTables($array = [], $tableOptions = null)
     {
-        $this->_applyNewTables($array ? $array : $this->newTables());
+        $this->_applyNewTables($array ? $array : $this->newTables(), false, $tableOptions);
     }
 
     public function upNewIndex($array = [])
@@ -187,7 +188,7 @@ class Migration extends BaseMigration
         }
     }
 
-    protected function _applyNewTables($tables, $revert = false)
+    protected function _applyNewTables($tables, $revert = false, $tableOptions = null)
     {
         $tables = $revert ? array_reverse($tables) : $tables;
         foreach ($tables as $table => $columns) {
@@ -201,7 +202,8 @@ class Migration extends BaseMigration
                 }
                 $this->dropTable($table);
             } else {
-                $this->createTable($table, $columns);
+                $tableOptions = ArrayHelper::remove($columns, 'tableOptions', $tableOptions);
+                $this->createTable($table, $columns, $tableOptions);
             }
         }
     }
