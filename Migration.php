@@ -102,7 +102,7 @@ class Migration extends BaseMigration
         }
         return parent::addPrimaryKey($name, $table, $columns);
     }
-    
+
     public function newColumns()
     {
         return [];
@@ -157,9 +157,34 @@ class Migration extends BaseMigration
         $this->_applyNewTables($array ? $array : $this->newTables());
     }
 
+    public function upNewIndex($array = [])
+    {
+        $this->_applyNewIndex($array ? $array : $this->newIndex());
+    }
+
+    public function newIndex()
+    {
+        return [];
+    }
+
     public function downNewTables($array = [])
     {
         $this->_applyNewTables($array ? $array : $this->newTables(), true);
+    }
+
+    protected function _applyNewIndex($indexes, $revert = false)
+    {
+        $indexes = $revert ? array_reverse($indexes) : $indexes;
+        foreach ($indexes as $key => $data) {
+            $unq = isset($data[2]) && $data[2];
+            $columns = is_array($data[1]) ? $data[1] : explode(',', $data[1]);
+            $name = self::formIndexName($data[0], $columns, $unq ? "unq" : "idx");
+            if ($revert) {
+                $this->dropIndex($name, $data[0]);
+            } else {
+                $this->createIndex($name, $data[0], join(',', $columns), $unq);
+            }
+        }
     }
 
     protected function _applyNewTables($tables, $revert = false)
