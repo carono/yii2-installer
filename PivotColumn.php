@@ -2,7 +2,6 @@
 
 namespace carono\yii2installer;
 
-use yii\db\Migration as BaseMigration;
 
 class PivotColumn
 {
@@ -12,7 +11,7 @@ class PivotColumn
     protected $_sourceColumn = null;
     protected $_name = null;
     /**
-     * @var BaseMigration
+     * @var Migration
      */
     public $migrate;
 
@@ -20,7 +19,7 @@ class PivotColumn
     {
         return 'pv';
     }
-    
+
     public function setName($name)
     {
         $this->_name = $name;
@@ -39,11 +38,26 @@ class PivotColumn
 
     public function apply()
     {
+        /**
+         * @var ForeignKeyColumn $type
+         */
         $columns = [
             $this->getSourceColumn() => Migration::foreignKey($this->getSourceTable()),
             $this->getRefColumn()    => Migration::foreignKey($this->getRefTable()),
         ];
-        $this->migrate->createTable($this->getName(), $columns);
+        $columnsInt = array_combine(array_keys($columns), [$this->migrate->integer(), $this->migrate->integer()]);
+        if ($this->migrate->db->driverName == "mysql") {
+            $this->migrate->createTable($this->getName(), $columnsInt);
+            $this->migrate->addPrimaryKey(null, $this->getName(), array_keys($columns));
+            foreach ($columns as $name => $type) {
+                $type->migrate = $this->migrate;
+                $type->sourceTable($this->getName())->sourceColumn($name);
+                $type->apply();
+            }
+        } else {
+            $this->migrate->createTable($this->getName(), $columns);
+            $this->migrate->addPrimaryKey(null, $this->getName(), array_keys($columns));
+        }
     }
 
     public function getRefTable()
@@ -85,7 +99,7 @@ class PivotColumn
         $this->_sourceColumn = $name;
         return $this;
     }
-    
+
     public function sourceTable($name)
     {
         $this->_sourceTable = $name;
