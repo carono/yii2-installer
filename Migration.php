@@ -145,6 +145,12 @@ class Migration extends BaseMigration
 
     public function dropColumn($table, $column, $type = null)
     {
+        if ($type instanceof ForeignKeyColumn) {
+            $type->migrate = $this;
+            $type->sourceTable($table);
+            $type->sourceColumn($column);
+            $type->remove();
+        }
         return parent::dropColumn($table, $column);
     }
 

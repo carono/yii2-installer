@@ -37,9 +37,14 @@ class ForeignKeyColumn
     public function apply()
     {
         return $this->migrate->addForeignKey(
-            $this->getName(), $this->getSourceTable(), $this->getSourceColumn(), $this->getRefTable(), $this->getRefColumn(),
-            $this->getOnDelete(), $this->getOnUpdate()
+            $this->getName(), $this->getSourceTable(), $this->getSourceColumn(), $this->getRefTable(),
+            $this->getRefColumn(), $this->getOnDelete(), $this->getOnUpdate()
         );
+    }
+
+    public function remove()
+    {
+        return $this->migrate->dropForeignKey($this->getName(), $this->getSourceTable());
     }
 
     public function getRefTable()
