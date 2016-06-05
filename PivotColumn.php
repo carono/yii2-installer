@@ -20,6 +20,12 @@ class PivotColumn
         return 'pv';
     }
 
+    public function setMigrate($migrate)
+    {
+        $this->migrate = $migrate;
+        return $this;
+    }
+    
     public function setName($name)
     {
         $this->_name = $name;

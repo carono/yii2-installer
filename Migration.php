@@ -9,6 +9,7 @@ use yii\helpers\ArrayHelper;
 class Migration extends BaseMigration
 {
 
+
     /**
      * @param      $refTable
      * @param null $refColumn
@@ -19,7 +20,7 @@ class Migration extends BaseMigration
     {
         return (new ForeignKeyColumn())->refTable($refTable)->refColumn($refColumn);
     }
-
+    
     /**
      * @param null $refTable
      * @param null $refColumn
@@ -47,8 +48,7 @@ class Migration extends BaseMigration
                 $pks[] = $column;
             }
             if ($type instanceof ForeignKeyColumn) {
-                $type->migrate = $this;
-                $type->sourceTable($table)->sourceColumn($column);
+                $type->setMigrate($this)->sourceTable($table)->sourceColumn($column);
                 $fks[] = $type;
                 $type = self::integer();
             }
@@ -85,12 +85,12 @@ class Migration extends BaseMigration
 
     public function addColumn($table, $column, $type)
     {
+        /**
+         * @var ForeignKeyColumn|mixed $type
+         */
         if ($type instanceof ForeignKeyColumn) {
             parent::addColumn($table, $column, self::integer());
-            $type->migrate = $this;
-            $type->sourceTable($table);
-            $type->sourceColumn($column);
-            $type->apply();
+            $type->setMigrate($this)->sourceTable($table)->sourceColumn($column)->apply();
         } else {
             return parent::addColumn($table, $column, $type);
         }
@@ -124,8 +124,7 @@ class Migration extends BaseMigration
         $columns = $revert ? array_reverse($columns) : $columns;
         foreach ($columns as $column) {
             if ($column[2] instanceof PivotColumn) {
-                $column[2]->migrate = $this;
-                $column[2]->setName($column[1])->sourceTable($column[0]);
+                $column[2]->setMigrate($this)->setName($column[1])->sourceTable($column[0]);
             }
             if ($revert) {
                 if ($column[2] instanceof PivotColumn) {
@@ -212,13 +211,6 @@ class Migration extends BaseMigration
                 $this->createTable($table, $columns, $tableOptions);
             }
         }
-    }
-
-    public static function formFkName($table, $column, $refTable, $refColumn)
-    {
-        $table = count(($t = explode('.', $table))) > 1 ? $t[1] : $t[0];
-        $refTable = count(($t = explode('.', $refTable))) > 1 ? $t[1] : $t[0];
-        return "{$table}[{$column}]_{$refTable}[{$refColumn}]_fk";
     }
 
     public static function formIndexName($table, $columns, $suffix = "idx")

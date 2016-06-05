@@ -27,9 +27,15 @@ class ForeignKeyColumn
      */
     public $migrate;
 
+    public function setMigrate($migrate)
+    {
+        $this->migrate = $migrate;
+        return $this;
+    }
+
     public function getName()
     {
-        return Migration::formFkName(
+        return self::formName(
             $this->getSourceTable(), $this->getSourceColumn(), $this->getRefTable(), $this->getRefColumn()
         );
     }
@@ -112,6 +118,23 @@ class ForeignKeyColumn
     {
         $this->_sourceColumn = $name;
         return $this;
+    }
+
+    private static function removeSchema($str)
+    {
+        if (strpos($str, '.') !== false) {
+            $arr = explode('.', $str);
+            return $arr[1];
+        } else {
+            return $str;
+        }
+    }
+
+    public static function formName($table, $column, $refTable, $refColumn)
+    {
+        $table = self::removeSchema($table);
+        $refTable = self::removeSchema($refTable);
+        return "{$table}[{$column}]_{$refTable}[{$refColumn}]_fk";
     }
 
     /**
