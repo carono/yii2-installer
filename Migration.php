@@ -1,6 +1,7 @@
 <?php
 namespace carono\yii2installer;
 
+use yii\db\ColumnSchema;
 use yii\db\ColumnSchemaBuilder;
 use yii\db\Migration as BaseMigration;
 use yii\helpers\ArrayHelper;
@@ -8,7 +9,6 @@ use yii\helpers\ArrayHelper;
 
 class Migration extends BaseMigration
 {
-
 
     /**
      * @param      $refTable
@@ -20,7 +20,7 @@ class Migration extends BaseMigration
     {
         return (new ForeignKeyColumn())->refTable($refTable)->refColumn($refColumn);
     }
-    
+
     /**
      * @param null $refTable
      * @param null $refColumn
@@ -30,6 +30,64 @@ class Migration extends BaseMigration
     public static function pivot($refTable = null, $refColumn = null)
     {
         return (new PivotColumn())->refTable($refTable)->refColumn($refColumn);
+    }
+
+    public function createIndex($name, $table, $columns, $unique = false)
+    {
+        if (is_null($name)) {
+            $name = self::formIndexName($table, $columns, $unique ? "unq" : "idx");
+        }
+        return parent::createIndex($name, $table, $columns, $unique);
+    }
+
+    public function columnSchemaToBuilder(ColumnSchema $column)
+    {
+        $size = $column->size;
+        $precision = $column->precision;
+        $default = $column->defaultValue;
+        $scale = $column->scale;
+        if ($column->isPrimaryKey && $column->autoIncrement) {
+            return $this->primaryKey();
+        }
+        switch ($column->type) {
+            case "string":
+                $builder = $this->string($size);
+                break;
+            case "integer":
+                $builder = $this->integer($size);
+                break;
+            case "datetime":
+                $builder = $this->dateTime($precision);
+                break;
+            case "text":
+                $builder = $this->text();
+                break;
+            case "smallint":
+                if ($size === 1){
+                    $default = (boolean)$default;
+                    $builder = $this->boolean();
+                }else{
+                    $builder = $this->smallInteger($size);
+                }
+                break;
+            case "binary":
+                $builder = $this->binary()->defaultValue($default);
+                break;
+            case "decimal":
+                $builder = $this->decimal($precision, $scale);
+                break;
+            case "double":
+                $builder = $this->double($precision)->defaultValue($default);
+                break;
+            default:
+                throw new \Exception("Column ($column->name) type '$column->type' not recognized");
+        }
+        $builder->defaultValue($default);
+        if (!$column->allowNull) {
+            $builder->notNull();
+        }
+        $builder->comment($column->comment);
+        return $builder;
     }
 
     public function createTable($table, $columns, $options = null)
@@ -44,13 +102,18 @@ class Migration extends BaseMigration
         $fks = [];
         $pks = [];
         foreach ($columns as $column => &$type) {
-            if ($type == self::primaryKey()) {
+            if ($type instanceof ColumnSchema){
+                $column = is_numeric($column) ? $type->name : $column;
+                $type = $this->columnSchemaToBuilder($type);
+            }
+            if ($type == $this->primaryKey()) {
                 $pks[] = $column;
             }
             if ($type instanceof ForeignKeyColumn) {
-                $type->setMigrate($this)->sourceTable($table)->sourceColumn($column);
+                $type->migrate = $this;
+                $type->sourceTable($table)->sourceColumn($column);
                 $fks[] = $type;
-                $type = self::integer();
+                $type =  $this->integer();
             }
 
             if ($type instanceof PivotColumn) {
@@ -62,7 +125,7 @@ class Migration extends BaseMigration
         }
         if (count($pks) > 1) {
             foreach ($columns as $column => &$type) {
-                $type = self::integer();
+                $type = $this->integer();
             }
         }
         $this->db->createCommand()->createTable($table, $columns, $options)->execute();
@@ -83,14 +146,22 @@ class Migration extends BaseMigration
         echo " done (time: " . sprintf('%.3f', microtime(true) - $time) . "s)\n";
     }
 
+    public function addForeignKey($name, $table, $columns, $refTable, $refColumns, $delete = null, $update = null)
+    {
+        if (is_null($name)) {
+            $name = self::formFkName($table, $columns, $refTable, $refColumns);
+        }
+        return parent::addForeignKey($name, $table, $columns, $refTable, $refColumns, $delete, $update);
+    }
+
     public function addColumn($table, $column, $type)
     {
-        /**
-         * @var ForeignKeyColumn|mixed $type
-         */
         if ($type instanceof ForeignKeyColumn) {
-            parent::addColumn($table, $column, self::integer());
-            $type->setMigrate($this)->sourceTable($table)->sourceColumn($column)->apply();
+            parent::addColumn($table, $column, $this->integer());
+            $type->migrate = $this;
+            $type->sourceTable($table);
+            $type->sourceColumn($column);
+            $type->apply();
         } else {
             return parent::addColumn($table, $column, $type);
         }
@@ -124,7 +195,8 @@ class Migration extends BaseMigration
         $columns = $revert ? array_reverse($columns) : $columns;
         foreach ($columns as $column) {
             if ($column[2] instanceof PivotColumn) {
-                $column[2]->setMigrate($this)->setName($column[1])->sourceTable($column[0]);
+                $column[2]->migrate = $this;
+                $column[2]->setName($column[1])->sourceTable($column[0]);
             }
             if ($revert) {
                 if ($column[2] instanceof PivotColumn) {
@@ -211,6 +283,18 @@ class Migration extends BaseMigration
                 $this->createTable($table, $columns, $tableOptions);
             }
         }
+    }
+
+    public static function formFkName($table, $column, $refTable, $refColumn)
+    {
+        $table = count(($t = explode('.', $table))) > 1 ? $t[1] : $t[0];
+        $refTable = count(($t = explode('.', $refTable))) > 1 ? $t[1] : $t[0];
+        return "{$table}[{$column}]_{$refTable}[{$refColumn}]_fk";
+    }
+
+    public static function formPkIndexName($table, $columns, $suffix = "pk")
+    {
+        return self::formIndexName($table, $columns, $suffix);
     }
 
     public static function formIndexName($table, $columns, $suffix = "idx")
