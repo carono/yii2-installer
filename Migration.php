@@ -154,6 +154,21 @@ class Migration extends BaseMigration
         return parent::addForeignKey($name, $table, $columns, $refTable, $refColumns, $delete, $update);
     }
 
+	 /**
+     * @inheritdoc
+     */
+    public function alterColumn($table, $column, $type)
+    {
+        if ($type instanceof ForeignKeyColumn) {
+            $type->migrate = $this;
+            $type->sourceTable($table);
+            $type->sourceColumn($column);
+            $type->apply();
+        } else {
+            return parent::alterColumn($table, $column, $type);
+        }
+    }
+	
     public function addColumn($table, $column, $type)
     {
         if ($type instanceof ForeignKeyColumn) {
