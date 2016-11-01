@@ -255,6 +255,11 @@ class Migration extends BaseMigration
         $this->_applyNewIndex($array ? $array : $this->newIndex());
     }
 
+    public function downNewIndex($array = [])
+    {
+        $this->_applyNewIndex($array ? $array : $this->newIndex(),true);
+    }
+
     public function newIndex()
     {
         return [];
