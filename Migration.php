@@ -63,10 +63,10 @@ class Migration extends BaseMigration
                 $builder = $this->text();
                 break;
             case "smallint":
-                if ($size === 1){
+                if ($size === 1) {
                     $default = (boolean)$default;
                     $builder = $this->boolean();
-                }else{
+                } else {
                     $builder = $this->smallInteger($size);
                 }
                 break;
@@ -102,7 +102,7 @@ class Migration extends BaseMigration
         $fks = [];
         $pks = [];
         foreach ($columns as $column => &$type) {
-            if ($type instanceof ColumnSchema){
+            if ($type instanceof ColumnSchema) {
                 $column = is_numeric($column) ? $type->name : $column;
                 $type = $this->columnSchemaToBuilder($type);
             }
@@ -113,7 +113,7 @@ class Migration extends BaseMigration
                 $type->migrate = $this;
                 $type->sourceTable($table)->sourceColumn($column);
                 $fks[] = $type;
-                $type =  $this->integer();
+                $type = $this->integer();
             }
 
             if ($type instanceof PivotColumn) {
@@ -154,7 +154,7 @@ class Migration extends BaseMigration
         return parent::addForeignKey($name, $table, $columns, $refTable, $refColumns, $delete, $update);
     }
 
-	 /**
+    /**
      * @inheritdoc
      */
     public function alterColumn($table, $column, $type)
@@ -168,7 +168,7 @@ class Migration extends BaseMigration
             return parent::alterColumn($table, $column, $type);
         }
     }
-	
+
     public function addColumn($table, $column, $type)
     {
         if ($type instanceof ForeignKeyColumn) {
@@ -208,7 +208,19 @@ class Migration extends BaseMigration
     protected function _applyNewColumns($columns = [], $revert = false)
     {
         $columns = $revert ? array_reverse($columns) : $columns;
-        foreach ($columns as $column) {
+
+        $result = [];
+        foreach ($columns as $key => $column) {
+            if (is_numeric($key)) {
+                $result[] = $column;
+            } else {
+                foreach ($column as $columnName => $value) {
+                    $result[] = [$key, $columnName, $value];
+                }
+            }
+        }
+
+        foreach ($result as $column) {
             if ($column[2] instanceof PivotColumn) {
                 $column[2]->migrate = $this;
                 $column[2]->setName($column[1])->sourceTable($column[0]);
@@ -257,7 +269,7 @@ class Migration extends BaseMigration
 
     public function downNewIndex($array = [])
     {
-        $this->_applyNewIndex($array ? $array : $this->newIndex(),true);
+        $this->_applyNewIndex($array ? $array : $this->newIndex(), true);
     }
 
     public function newIndex()
