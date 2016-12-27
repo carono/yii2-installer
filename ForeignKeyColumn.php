@@ -22,6 +22,7 @@ class ForeignKeyColumn
     protected $_refColumn = null;
     protected $_sourceTable = null;
     protected $_sourceColumn = null;
+    protected $_name;
     /**
      * @var BaseMigration
      */
@@ -33,11 +34,21 @@ class ForeignKeyColumn
         return $this;
     }
 
+    public function setName($value)
+    {
+        $this->_name = $value;
+        return $this;
+    }
+
     public function getName()
     {
-        return self::formName(
-            $this->getSourceTable(), $this->getSourceColumn(), $this->getRefTable(), $this->getRefColumn()
-        );
+        if ($this->_name) {
+            return $this->_name;
+        } else {
+            return self::formName(
+                $this->getSourceTable(), $this->getSourceColumn(), $this->getRefTable(), $this->getRefColumn()
+            );
+        }
     }
 
     public function apply()

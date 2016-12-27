@@ -284,15 +284,35 @@ class Migration extends BaseMigration
 
     protected function _applyNewIndex($indexes, $revert = false)
     {
+        /**
+         * @var ForeignKeyColumn $fk
+         */
         $indexes = $revert ? array_reverse($indexes) : $indexes;
         foreach ($indexes as $key => $data) {
             $unq = isset($data[2]) && $data[2];
             $columns = is_array($data[1]) ? $data[1] : explode(',', $data[1]);
+            $table = $data[0];
+
+            if (isset($data[2]) && $data[2] instanceof ForeignKeyColumn) {
+                $fk = $data[2];
+                $fk->migrate = $this;
+                $fk->sourceTable($table);
+                $fk->sourceColumn($columns[0]);
+            }
+
             $name = self::formIndexName($data[0], $columns, $unq ? "unq" : "idx");
             if ($revert) {
-                $this->dropIndex($name, $data[0]);
+                if ($fk) {
+                    $fk->remove();
+                } else {
+                    $this->dropIndex($name, $data[0]);
+                }
             } else {
-                $this->createIndex($name, $data[0], join(',', $columns), $unq);
+                if ($fk) {
+                    $fk->apply();
+                } else {
+                    $this->createIndex($name, $data[0], join(',', $columns), $unq);
+                }
             }
         }
     }
