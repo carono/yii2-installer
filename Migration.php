@@ -292,7 +292,7 @@ class Migration extends BaseMigration
             $unq = isset($data[2]) && $data[2];
             $columns = is_array($data[1]) ? $data[1] : explode(',', $data[1]);
             $table = $data[0];
-
+            $fk = null;
             if (isset($data[2]) && $data[2] instanceof ForeignKeyColumn) {
                 $fk = $data[2];
                 $fk->migrate = $this;
