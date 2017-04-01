@@ -4,9 +4,6 @@ namespace carono\yii2installer;
 
 use yii\console\Controller;
 use Yii;
-use yii\console\controllers\MigrateController as Migrate;
-use yii\db\Connection;
-use yii\di\Instance;
 use yii\helpers\ArrayHelper;
 
 class InstallController extends Controller
@@ -104,21 +101,25 @@ class InstallController extends Controller
     }
 
 
-    public static function migrate($path)
+    public static function migrate($path, $asClosure = false)
     {
         $controller = new MigrateController(null, null);
         $controller->db = Yii::$app->db;
         $controller->interactive = false;
         if (is_dir(Yii::getAlias($path))) {
-            return function () use ($controller, $path) {
+            $func = function () use ($controller, $path) {
                 $controller->migrationPath = Yii::getAlias($path);
                 return $controller->actionUp() == 0;
             };
         } else {
-            return function () use ($controller, $path) {
+            $func = function () use ($controller, $path) {
                 return $controller->exec($path);
             };
         }
+        if ($asClosure) {
+            return $func;
+        } else {
+            return $func();
+        }
     }
 }
-
