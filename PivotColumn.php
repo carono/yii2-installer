@@ -10,6 +10,7 @@ class PivotColumn
     protected $_sourceTable = null;
     protected $_sourceColumn = null;
     protected $_name = null;
+    protected $_tableName = null;
     /**
      * @var Migration
      */
@@ -32,9 +33,15 @@ class PivotColumn
         return $this;
     }
 
+    public function tableName($name)
+    {
+        $this->_tableName = $name;
+        return $this;
+    }
+
     public function getName()
     {
-        return join('_', ["pv", $this->_sourceTable, $this->_name]);
+        return $this->_tableName ? $this->_tableName : join('_', ["pv", $this->_sourceTable, $this->_name]);
     }
 
     public function remove()
