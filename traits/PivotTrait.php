@@ -10,13 +10,13 @@ trait PivotTrait
     protected $_storage = [];
 
     /**
-     * @param ActiveRecord $class
+     * @param ActiveRecord $pivotClass
      *
      * @return mixed
      */
-    public function deletePivots($class)
+    public function deletePivots($pivotClass)
     {
-        return $class::deleteAll([$this->getMainPkField() => $this->getMainPk()]);
+        return $pivotClass::deleteAll([$this->getMainPkField($pivotClass) => $this->getMainPk()]);
     }
 
     /**
@@ -55,12 +55,12 @@ trait PivotTrait
          */
         if (is_numeric($condition)) {
             $pv = new $pivotClass;
-            $mainPk = $this->getMainPkField();
+            $mainPk = $this->getMainPkField($pivotClass);
             $pk = $pv->primaryKey();
             $slavePk = current(array_diff($pk, [$mainPk]));
             $condition = [$slavePk => $condition];
         }
-        $condition = array_merge($condition, [$this->getMainPkField() => $this->getMainPk()]);
+        $condition = array_merge($condition, [$this->getMainPkField($pivotClass) => $this->getMainPk()]);
         return $pivotClass::find()->andWhere($condition)->select([$column])->scalar();
     }
 
@@ -77,12 +77,12 @@ trait PivotTrait
          */
         if (is_numeric($condition)) {
             $pv = new $pivotClass;
-            $mainPk = $this->getMainPkField();
+            $mainPk = $this->getMainPkField($pivotClass);
             $pk = $pv->primaryKey();
             $slavePk = current(array_diff($pk, [$mainPk]));
             $condition = [$slavePk => $condition];
         }
-        $condition = array_merge($condition, [$this->getMainPkField() => $this->getMainPk()]);
+        $condition = array_merge($condition, [$this->getMainPkField($pivotClass) => $this->getMainPk()]);
         $pivotClass::updateAll([$column => $value], $condition);
     }
 
@@ -156,7 +156,7 @@ trait PivotTrait
          * @var ActiveRecord $pv
          */
         $pv = new $pivotClass;
-        $mainPk = $this->getMainPkField();
+        $mainPk = $this->getMainPkField($pivotClass);
         $pk = $pv->primaryKey();
         if (!in_array($mainPk, $pk)) {
             throw  new \Exception("Fail found pk $mainPk in " . $pivotClass);
