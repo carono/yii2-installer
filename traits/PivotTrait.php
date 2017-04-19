@@ -185,13 +185,14 @@ trait PivotTrait
     }
 
     /**
+     * @param ActiveRecord $pivotClass
      * @return string
      */
-    protected function getMainPkField()
+    protected function getMainPkField($pivotClass)
     {
         /**
          * @var ActiveRecord $this
          */
-        return $this->tableName() . "_id";
+        return $this::getDb()->getTableSchema($pivotClass::tableName())->primaryKey[0];
     }
 }
