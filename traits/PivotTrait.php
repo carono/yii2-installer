@@ -156,11 +156,11 @@ trait PivotTrait
     /**
      * @param $model
      * @param $pivotClass
-     * @param null $attributes
+     * @param array $attributes
      * @return array|null|ActiveRecord
      * @throws \Exception
      */
-    public function addPivot($model, $pivotClass, $attributes = null)
+    public function addPivot($model, $pivotClass, $attributes = [])
     {
         /**
          * @var ActiveRecord $pv
@@ -172,7 +172,7 @@ trait PivotTrait
             throw  new \Exception("Fail found pk $mainPk in " . $pivotClass);
         }
         $slavePk = current(array_diff($pk, [$mainPk]));
-        $attr = $this->getStoragePivotAttribute($model, $pivotClass);
+        $attr = $attributes ? $attributes : $this->getStoragePivotAttribute($model, $pivotClass);
         $attr[$mainPk] = $this->getMainPk();
         $attr[$slavePk] = $model->id;
         if ($find = (new ActiveQuery($pivotClass))->andWhere($attr)->one()) {
