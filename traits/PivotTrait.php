@@ -1,16 +1,19 @@
 <?php
+
 namespace carono\yii2installer\traits;
 
 use yii\base\Model;
 use yii\db\ActiveQuery;
 use yii\db\ActiveRecord;
+use yii\helpers\ArrayHelper;
 
 trait PivotTrait
 {
     protected $_storage = [];
+    protected $_storageAttributes = [];
 
     /**
-     * @param ActiveRecord $pivotClass
+     * @param string $pivotClass
      *
      * @return mixed
      */
@@ -20,7 +23,7 @@ trait PivotTrait
     }
 
     /**
-     * @param $pivotClass
+     * @param string $pivotClass
      *
      * @return array
      */
@@ -42,9 +45,9 @@ trait PivotTrait
     }
 
     /**
-     * @param      ActiveRecord $pivotClass
-     * @param                   $column
-     * @param array             $condition
+     * @param string $pivotClass
+     * @param string $column
+     * @param array $condition
      *
      * @return mixed
      */
@@ -65,10 +68,10 @@ trait PivotTrait
     }
 
     /**
-     * @param ActiveRecord $pivotClass
+     * @param string $pivotClass
      * @param              $value
-     * @param null         $column
-     * @param array        $condition
+     * @param null $column
+     * @param array $condition
      */
     public function updatePivotAttribute($pivotClass, $value, $column = null, $condition = [])
     {
@@ -87,7 +90,7 @@ trait PivotTrait
     }
 
     /**
-     * @param $pivotClass
+     * @param string $pivotClass
      */
     public function clearStorage($pivotClass)
     {
@@ -95,8 +98,8 @@ trait PivotTrait
     }
 
     /**
-     * @param      $models
-     * @param      $pivotClass
+     * @param ActiveRecord[] $models
+     * @param string $pivotClass
      * @param null $modelClass
      */
     public function storagePivots($models, $pivotClass, $modelClass = null)
@@ -116,7 +119,7 @@ trait PivotTrait
      *
      * @throws \Exception
      */
-    public function storagePivot($model, $pivotClass, $modelClass = null)
+    public function storagePivot($model, $pivotClass, $modelClass = null, $pvAttributes = [])
     {
         if (is_numeric($model) && $modelClass) {
             $model = $modelClass::findOne($model);
@@ -127,6 +130,12 @@ trait PivotTrait
             throw new \Exception('Cannot determine or model not found');
         }
         $this->_storage[$pivotClass][] = $model;
+        $this->_storageAttributes[$pivotClass][spl_object_hash($model)] = $pvAttributes;
+    }
+
+    public function getStoragePivotAttribute($model, $pivotClass)
+    {
+        return ArrayHelper::getValue($this->_storageAttributes, $pivotClass . '.' . spl_object_hash($model), []);
     }
 
     /**
@@ -147,10 +156,11 @@ trait PivotTrait
     /**
      * @param $model
      * @param $pivotClass
+     * @param null $attributes
      * @return array|null|ActiveRecord
      * @throws \Exception
      */
-    public function addPivot($model, $pivotClass)
+    public function addPivot($model, $pivotClass, $attributes = null)
     {
         /**
          * @var ActiveRecord $pv
@@ -162,6 +172,7 @@ trait PivotTrait
             throw  new \Exception("Fail found pk $mainPk in " . $pivotClass);
         }
         $slavePk = current(array_diff($pk, [$mainPk]));
+        $attr = $this->getStoragePivotAttribute($model, $pivotClass);
         $attr[$mainPk] = $this->getMainPk();
         $attr[$slavePk] = $model->id;
         if ($find = (new ActiveQuery($pivotClass))->andWhere($attr)->one()) {
@@ -185,7 +196,7 @@ trait PivotTrait
     }
 
     /**
-     * @param ActiveRecord $pivotClass
+     * @param string $pivotClass
      * @return string
      */
     protected function getMainPkField($pivotClass)
