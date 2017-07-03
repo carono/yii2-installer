@@ -25,7 +25,7 @@ trait PivotTrait
     /**
      * @param string $pivotClass
      *
-     * @return array
+     * @return ActiveRecord[]
      */
     public function getStoragePivots($pivotClass)
     {
@@ -172,13 +172,18 @@ trait PivotTrait
             throw  new \Exception("Fail found pk $mainPk in " . $pivotClass);
         }
         $slavePk = current(array_diff($pk, [$mainPk]));
-        $attr = $attributes ? $attributes : $this->getStoragePivotAttribute($model, $pivotClass);
-        $attr[$mainPk] = $this->getMainPk();
-        $attr[$slavePk] = $model->id;
-        if ($find = (new ActiveQuery($pivotClass))->andWhere($attr)->one()) {
+        $attributes = $attributes ? $attributes : $this->getStoragePivotAttribute($model, $pivotClass);
+        $condition = [];
+        $condition[$mainPk] = $this->getMainPk();
+        $condition[$slavePk] = $model->id;
+        if ($find = (new ActiveQuery($pivotClass))->andWhere($condition)->one()) {
+            if ($attributes) {
+                $find->setAttributes($attributes);
+                $find->save();
+            }
             return $find;
         } else {
-            $pv->setAttributes($attr);
+            $pv->setAttributes(array_merge($condition, $attributes));
             $pv->save();
             return $pv;
         }
