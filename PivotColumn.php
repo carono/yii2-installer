@@ -26,7 +26,7 @@ class PivotColumn
         $this->migrate = $migrate;
         return $this;
     }
-    
+
     public function setName($name)
     {
         $this->_name = $name;
@@ -41,7 +41,8 @@ class PivotColumn
 
     public function getName()
     {
-        return $this->_tableName ? $this->_tableName : join('_', ["pv", $this->_sourceTable, $this->_name]);
+        $name = $this->_tableName ? $this->_tableName : join('_', ["pv", $this->_sourceTable, $this->_name]);
+        return $this->migrate->expandTablePrefix("{{%" . Migration::setTablePrefix($name, '') . "}}");
     }
 
     public function remove()
@@ -56,7 +57,7 @@ class PivotColumn
          */
         $columns = [
             $this->getSourceColumn() => Migration::foreignKey($this->getSourceTable()),
-            $this->getRefColumn()    => Migration::foreignKey($this->getRefTable()),
+            $this->getRefColumn() => Migration::foreignKey($this->getRefTable()),
         ];
         $columnsInt = array_combine(array_keys($columns), [$this->migrate->integer(), $this->migrate->integer()]);
         if ($this->migrate->db->driverName == "mysql") {
@@ -81,10 +82,11 @@ class PivotColumn
     public function getRefColumn()
     {
         if (!$this->_refColumn) {
-            return join("_", [$this->getRefTable(), "id"]);
+            $name = join("_", [$this->getRefTable(), "id"]);
         } else {
-            return $this->_refColumn;
+            $name = $this->_refColumn;
         }
+        return Migration::setTablePrefix($name, '');
     }
 
     public function getSourceTable()
@@ -95,10 +97,11 @@ class PivotColumn
     public function getSourceColumn()
     {
         if (!$this->_sourceColumn) {
-            return join("_", [$this->getSourceTable(), "id"]);
+            $name = join("_", [$this->getSourceTable(), "id"]);
         } else {
-            return $this->_sourceColumn;
+            $name = $this->_sourceColumn;
         }
+        return Migration::setTablePrefix($name, '');
     }
 
     public function refTable($name)

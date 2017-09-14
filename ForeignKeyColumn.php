@@ -24,7 +24,7 @@ class ForeignKeyColumn
     protected $_sourceColumn = null;
     protected $_name;
     /**
-     * @var BaseMigration
+     * @var Migration
      */
     public $migrate;
 
@@ -43,12 +43,11 @@ class ForeignKeyColumn
     public function getName()
     {
         if ($this->_name) {
-            return $this->_name;
+            $name = $this->_name;
         } else {
-            return self::formName(
-                $this->getSourceTable(), $this->getSourceColumn(), $this->getRefTable(), $this->getRefColumn()
-            );
+            $name = self::formName($this->getSourceTable(), $this->getSourceColumn(), $this->getRefTable(), $this->getRefColumn());
         }
+        return $this->migrate->expandTablePrefix($name);
     }
 
     public function apply()

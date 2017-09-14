@@ -1,4 +1,5 @@
 <?php
+
 namespace carono\yii2installer;
 
 use yii\db\ColumnSchema;
@@ -90,10 +91,30 @@ class Migration extends BaseMigration
         return $builder;
     }
 
+    /**
+     * @param $name
+     * @return mixed
+     */
+    public function expandTablePrefix($name)
+    {
+        return self::setTablePrefix($name, $this->db->tablePrefix);
+    }
+
+    /**
+     * @param $name
+     * @param $prefix
+     * @return mixed
+     * @internal param $prefix
+     */
+    public static function setTablePrefix($name, $prefix)
+    {
+        return preg_replace('#{{%([\w\d\-_]+)}}#', $prefix . "$1", $name);
+    }
+
     public function createTable($table, $columns, $options = null)
     {
         /**
-         * @var PivotColumn[]      $pvs
+         * @var PivotColumn[] $pvs
          * @var ForeignKeyColumn[] $fks
          */
         echo "    > create table $table ...";
