@@ -154,6 +154,25 @@ trait PivotTrait
     }
 
     /**
+     * @param $pivotClass
+     * @return mixed
+     * @throws \Exception
+     */
+    private function getSlavePk($pivotClass)
+    {
+        /**
+         * @var ActiveRecord $pv
+         */
+        $mainPk = $this->getMainPkField($pivotClass);
+        $pv = new $pivotClass;
+        $pk = $pv->primaryKey();
+        if (!in_array($mainPk, $pk)) {
+            throw  new \Exception("Fail found pk $mainPk in " . $pivotClass);
+        }
+        return current(array_diff($pk, [$mainPk]));
+    }
+
+    /**
      * @param $model
      * @param $pivotClass
      * @param array $attributes
@@ -190,6 +209,20 @@ trait PivotTrait
     }
 
     /**
+     * @param ActiveRecord $model
+     * @param string|ActiveRecord $pivotClass
+     * @return mixed
+     */
+    public function deletePivot($model, $pivotClass)
+    {
+        return $pivotClass::deleteAll([
+            $this->getMainPkField($pivotClass) => $this->getMainPk(),
+            $this->getSlavePk($pivotClass) => $model->{$model->primaryKey()[0]}
+        ]);
+    }
+
+
+    /**
      * @return mixed
      */
     protected function getMainPk()
@@ -201,7 +234,7 @@ trait PivotTrait
     }
 
     /**
-     * @param string $pivotClass
+     * @param string|ActiveRecord $pivotClass
      * @return string
      */
     protected function getMainPkField($pivotClass)
