@@ -68,6 +68,32 @@ trait PivotTrait
     }
 
     /**
+     * @param ActiveRecord $model
+     * @param string|ActiveRecord $pivotClass
+     * @return array
+     */
+    private function getPivotCondition($model, $pivotClass)
+    {
+        $mainPk = $this->getMainPkField($pivotClass);
+        $slavePk = $this->getSlavePk($pivotClass);
+        return [
+            $mainPk => $this->getMainPk(),
+            $slavePk => $model->getAttribute($model->primaryKey()[0])
+        ];
+    }
+
+    /**
+     * @param ActiveRecord $model
+     * @param string|ActiveRecord $pivotClass
+     * @param array $condition
+     * @return ActiveRecord|null
+     */
+    public function getPivot($model, $pivotClass, $condition = [])
+    {
+        return $pivotClass::find()->andWhere($this->getPivotCondition($model, $pivotClass))->andWhere($condition)->one();
+    }
+
+    /**
      * @param string $pivotClass
      * @param              $value
      * @param null $column
