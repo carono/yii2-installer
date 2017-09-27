@@ -50,7 +50,7 @@ class Migration extends BaseMigration
         if (is_null($name)) {
             $name = self::formIndexName($table, $columns, $suffix);
         }
-        $name = self::truncateName($name, 64, $suffix);
+        $name = self::truncateName($name, 64, '_' . $suffix);
         return parent::createIndex($name, $table, $columns, $unique);
     }
 
@@ -246,6 +246,7 @@ class Migration extends BaseMigration
         if (is_null($name)) {
             $name = self::formIndexName($table, $columns, 'pk');
         }
+        $name = self::truncateName($name, 64, '_pk');
         return parent::addPrimaryKey($name, $table, $columns);
     }
 
