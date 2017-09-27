@@ -17,12 +17,15 @@ class Migration extends BaseMigration
      * @param      $refTable
      * @param null $refColumn
      *
+     * @param string $type
+     * @param null $length
      * @return ForeignKeyColumn
      */
-    public function foreignKey($refTable = null, $refColumn = null)
+    public function foreignKey($refTable = null, $refColumn = null, $type = Schema::TYPE_INTEGER, $length = null)
     {
-        return (new ForeignKeyColumn(Schema::TYPE_INTEGER, null))->refTable($refTable)->refColumn($refColumn)->setMigrate($this);
+        return (new ForeignKeyColumn($type, $length))->refTable($refTable)->refColumn($refColumn)->setMigrate($this);
     }
+
 
     /**
      * @param null $refTable
@@ -497,6 +500,7 @@ class Migration extends BaseMigration
 
     /**
      * Принудительно обрезаем названия ключей, если они получаются больше чем $length, т.к. базы могут вылететь с ошибкой
+     *
      * @see https://dev.mysql.com/doc/refman/5.7/en/identifiers.html
      *
      * @param $name
