@@ -5,7 +5,9 @@ namespace carono\yii2installer;
 use yii\db\ColumnSchema;
 use yii\db\ColumnSchemaBuilder;
 use yii\db\Migration as BaseMigration;
+use yii\db\Schema;
 use yii\helpers\ArrayHelper;
+use yii\helpers\StringHelper;
 
 
 class Migration extends BaseMigration
@@ -17,9 +19,9 @@ class Migration extends BaseMigration
      *
      * @return ForeignKeyColumn
      */
-    public static function foreignKey($refTable = null, $refColumn = null)
+    public function foreignKey($refTable = null, $refColumn = null)
     {
-        return (new ForeignKeyColumn())->refTable($refTable)->refColumn($refColumn);
+        return (new ForeignKeyColumn(Schema::TYPE_INTEGER, null))->refTable($refTable)->refColumn($refColumn)->setMigrate($this);
     }
 
     /**
@@ -28,19 +30,32 @@ class Migration extends BaseMigration
      *
      * @return PivotColumn
      */
-    public static function pivot($refTable = null, $refColumn = null)
+    public function pivot($refTable = null, $refColumn = null)
     {
-        return (new PivotColumn())->refTable($refTable)->refColumn($refColumn);
+        return (new PivotColumn())->refTable($refTable)->refColumn($refColumn)->setMigrate($this);
     }
 
+    /**
+     * @param string $name
+     * @param string $table
+     * @param array|string $columns
+     * @param bool $unique
+     */
     public function createIndex($name, $table, $columns, $unique = false)
     {
+        $suffix = $unique ? "unq" : "idx";
         if (is_null($name)) {
-            $name = self::formIndexName($table, $columns, $unique ? "unq" : "idx");
+            $name = self::formIndexName($table, $columns, $suffix);
         }
+        $name = self::truncateName($name, 64, $suffix);
         return parent::createIndex($name, $table, $columns, $unique);
     }
 
+    /**
+     * @param ColumnSchema $column
+     * @return $this|ColumnSchemaBuilder
+     * @throws \Exception
+     */
     public function columnSchemaToBuilder(ColumnSchema $column)
     {
         $size = $column->size;
@@ -111,6 +126,11 @@ class Migration extends BaseMigration
         return preg_replace('#{{%([\w\d\-_]+)}}#', $prefix . "$1", $name);
     }
 
+    /**
+     * @param string $table
+     * @param array $columns
+     * @param null $options
+     */
     public function createTable($table, $columns, $options = null)
     {
         /**
@@ -127,18 +147,15 @@ class Migration extends BaseMigration
                 $column = is_numeric($column) ? $type->name : $column;
                 $type = $this->columnSchemaToBuilder($type);
             }
-            if ($type == $this->primaryKey()) {
+            if ((string)$type == (string)$this->primaryKey()) {
                 $pks[] = $column;
             }
             if ($type instanceof ForeignKeyColumn) {
-                $type->migrate = $this;
                 $type->sourceTable($table)->sourceColumn($column);
                 $fks[] = $type;
-                $type = $this->integer();
             }
 
             if ($type instanceof PivotColumn) {
-                $type->migrate = $this;
                 $type->setName($column)->sourceTable($table);
                 $pvs[] = $type;
                 unset($columns[$column]);
@@ -167,11 +184,21 @@ class Migration extends BaseMigration
         echo " done (time: " . sprintf('%.3f', microtime(true) - $time) . "s)\n";
     }
 
+    /**
+     * @param string $name
+     * @param string $table
+     * @param array|string $columns
+     * @param string $refTable
+     * @param array|string $refColumns
+     * @param null $delete
+     * @param null $update
+     */
     public function addForeignKey($name, $table, $columns, $refTable, $refColumns, $delete = null, $update = null)
     {
         if (is_null($name)) {
             $name = self::formFkName($table, $columns, $refTable, $refColumns);
         }
+        $name = self::truncateName($name, 64, '_fk');
         return parent::addForeignKey($name, $table, $columns, $refTable, $refColumns, $delete, $update);
     }
 
@@ -181,7 +208,6 @@ class Migration extends BaseMigration
     public function alterColumn($table, $column, $type)
     {
         if ($type instanceof ForeignKeyColumn) {
-            $type->migrate = $this;
             $type->sourceTable($table);
             $type->sourceColumn($column);
             $type->apply();
@@ -190,11 +216,15 @@ class Migration extends BaseMigration
         }
     }
 
+    /**
+     * @param string $table
+     * @param string $column
+     * @param string $type
+     */
     public function addColumn($table, $column, $type)
     {
         if ($type instanceof ForeignKeyColumn) {
             parent::addColumn($table, $column, $this->integer());
-            $type->migrate = $this;
             $type->sourceTable($table);
             $type->sourceColumn($column);
             $type->apply();
@@ -203,6 +233,11 @@ class Migration extends BaseMigration
         }
     }
 
+    /**
+     * @param string $name
+     * @param string $table
+     * @param array|string $columns
+     */
     public function addPrimaryKey($name, $table, $columns)
     {
         if (is_null($name)) {
@@ -211,21 +246,34 @@ class Migration extends BaseMigration
         return parent::addPrimaryKey($name, $table, $columns);
     }
 
+    /**
+     * @return array
+     */
     public function newColumns()
     {
         return [];
     }
 
+    /**
+     * @param array $array
+     */
     public function downNewColumns($array = [])
     {
         $this->_applyNewColumns($array ? $array : $this->newColumns(), true);
     }
 
+    /**
+     * @param array $array
+     */
     public function upNewColumns($array = [])
     {
         $this->_applyNewColumns($array ? $array : $this->newColumns(), false);
     }
 
+    /**
+     * @param array $columns
+     * @param bool $revert
+     */
     protected function _applyNewColumns($columns = [], $revert = false)
     {
         $columns = $revert ? array_reverse($columns) : $columns;
@@ -243,7 +291,6 @@ class Migration extends BaseMigration
 
         foreach ($result as $column) {
             if ($column[2] instanceof PivotColumn) {
-                $column[2]->migrate = $this;
                 $column[2]->setName($column[1])->sourceTable($column[0]);
             }
             if ($revert) {
@@ -262,10 +309,14 @@ class Migration extends BaseMigration
         }
     }
 
+    /**
+     * @param string $table
+     * @param string $column
+     * @param null $type
+     */
     public function dropColumn($table, $column, $type = null)
     {
         if ($type instanceof ForeignKeyColumn) {
-            $type->migrate = $this;
             $type->sourceTable($table);
             $type->sourceColumn($column);
             $type->remove();
@@ -273,36 +324,59 @@ class Migration extends BaseMigration
         return parent::dropColumn($table, $column);
     }
 
+    /**
+     * @return array
+     */
     public function newTables()
     {
         return [];
     }
 
+    /**
+     * @param array $array
+     * @param null $tableOptions
+     */
     public function upNewTables($array = [], $tableOptions = null)
     {
         $this->_applyNewTables($array ? $array : $this->newTables(), false, $tableOptions);
     }
 
+    /**
+     * @param array $array
+     */
     public function upNewIndex($array = [])
     {
         $this->_applyNewIndex($array ? $array : $this->newIndex());
     }
 
+    /**
+     * @param array $array
+     */
     public function downNewIndex($array = [])
     {
         $this->_applyNewIndex($array ? $array : $this->newIndex(), true);
     }
 
+    /**
+     * @return array
+     */
     public function newIndex()
     {
         return [];
     }
 
+    /**
+     * @param array $array
+     */
     public function downNewTables($array = [])
     {
         $this->_applyNewTables($array ? $array : $this->newTables(), true);
     }
 
+    /**
+     * @param $indexes
+     * @param bool $revert
+     */
     protected function _applyNewIndex($indexes, $revert = false)
     {
         /**
@@ -316,7 +390,6 @@ class Migration extends BaseMigration
             $fk = null;
             if (isset($data[2]) && $data[2] instanceof ForeignKeyColumn) {
                 $fk = $data[2];
-                $fk->migrate = $this;
                 $fk->sourceTable($table);
                 $fk->sourceColumn($columns[0]);
             }
@@ -345,7 +418,6 @@ class Migration extends BaseMigration
             if ($revert) {
                 foreach ($columns as $column => $type) {
                     if ($type instanceof PivotColumn) {
-                        $type->migrate = $this;
                         $type->setName($column)->sourceTable($table);
                         $type->remove();
                     }
@@ -387,7 +459,7 @@ class Migration extends BaseMigration
             $this->insert($table, $row);
         }
         if ($updateSeq) {
-            $c = (int)\Yii::$app->db->createCommand("SELECT count(*) FROM [[$table]]")->queryScalar() + 1;
+            $c = (int)\Yii::$app->db->createCommand("SELECT count(*) FROM {{$table}}")->queryScalar() + 1;
             $this->execute("ALTER SEQUENCE {$table}_{$updateSeq}_seq RESTART WITH $c;");
         }
     }
@@ -399,6 +471,48 @@ class Migration extends BaseMigration
             return $arr[1];
         } else {
             return $str;
+        }
+    }
+
+    /**
+     * @param $table
+     * @param $column
+     * @return false|null|string
+     */
+    protected function getForeignKey($table, $column)
+    {
+        $condition = [':t' => $table, ':c' => $column];
+        return $this->db->createCommand('SELECT CONSTRAINT_NAME FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE TABLE_NAME=:t and COLUMN_NAME=:c', $condition)->queryScalar();
+    }
+
+    /**
+     * @param $table
+     * @param $column
+     */
+    public function dropForeignKeyByColumn($table, $column)
+    {
+        $key = $this->getForeignKey($table, $column);
+        $this->dropForeignKey($key, $table);
+    }
+
+    /**
+     * Принудительно обрезаем названия ключей, если они получаются больше чем $length, т.к. базы могут вылететь с ошибкой
+     * @see https://dev.mysql.com/doc/refman/5.7/en/identifiers.html
+     *
+     * @param $name
+     * @param int $length
+     * @param null $suffix
+     * @return bool|string
+     */
+    public static function truncateName($name, $length = 64, $suffix = null)
+    {
+        if (strlen($name) > $length) {
+            if (StringHelper::endsWith($name, $suffix)) {
+                $name = substr($name, 0, strlen($suffix));
+            }
+            return dechex(crc32($name)) . $suffix;
+        } else {
+            return $name;
         }
     }
 }

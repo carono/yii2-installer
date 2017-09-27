@@ -1,17 +1,16 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: Карно
- * Date: 30.05.2016
- * Time: 11:53
- */
 
 namespace carono\yii2installer;
 
 
-use yii\db\Migration as BaseMigration;
+use yii\db\ColumnSchemaBuilder;
 
-class ForeignKeyColumn
+/**
+ * Class ForeignKeyColumn
+ *
+ * @package carono\yii2installer
+ */
+class ForeignKeyColumn extends ColumnSchemaBuilder
 {
     const FK_CASCADE = 'CASCADE';
     const FK_DEFAULT = 'SET DEFAULT';
@@ -28,18 +27,29 @@ class ForeignKeyColumn
      */
     public $migrate;
 
+    /**
+     * @param $migrate
+     * @return $this
+     */
     public function setMigrate($migrate)
     {
         $this->migrate = $migrate;
         return $this;
     }
 
+    /**
+     * @param $value
+     * @return $this
+     */
     public function setName($value)
     {
         $this->_name = $value;
         return $this;
     }
 
+    /**
+     * @return mixed
+     */
     public function getName()
     {
         if ($this->_name) {
@@ -47,7 +57,8 @@ class ForeignKeyColumn
         } else {
             $name = self::formName($this->getSourceTable(), $this->getSourceColumn(), $this->getRefTable(), $this->getRefColumn());
         }
-        return $this->migrate->expandTablePrefix($name);
+        $name = $this->migrate->expandTablePrefix($name);
+        return $name;
     }
 
     public function apply()
@@ -60,14 +71,20 @@ class ForeignKeyColumn
 
     public function remove()
     {
-        return $this->migrate->dropForeignKey($this->getName(), $this->getSourceTable());
+        $this->migrate->dropForeignKeyByColumn($this->getSourceTable(), $this->getSourceColumn());
     }
 
+    /**
+     * @return null|string
+     */
     public function getRefTable()
     {
         return $this->_refTable;
     }
 
+    /**
+     * @return null|string
+     */
     public function getRefColumn()
     {
         if (!$this->_refColumn && $this->migrate) {
@@ -77,37 +94,59 @@ class ForeignKeyColumn
         return $this->_refColumn;
     }
 
+    /**
+     * @return null|string
+     */
     public function getSourceTable()
     {
         return $this->_sourceTable;
     }
 
+    /**
+     * @return null|string
+     */
     public function getSourceColumn()
     {
         return $this->_sourceColumn;
     }
 
+    /**
+     * @return string
+     */
     public function getOnDelete()
     {
         return $this->_onDelete;
     }
 
+    /**
+     * @return null|string
+     */
     public function getOnUpdate()
     {
         return $this->_onUpdate;
     }
 
+    /**
+     * @param $string
+     * @return $this
+     */
     public function onDelete($string)
     {
         $this->_onDelete = $string;
         return $this;
     }
 
+    /**
+     * @return ForeignKeyColumn
+     */
     public function onDeleteCascade()
     {
         return $this->onDelete(self::FK_CASCADE);
     }
 
+    /**
+     * @return ForeignKeyColumn
+     */
     public function onDeleteNull()
     {
         return $this->onDelete(self::FK_NULL);
@@ -118,18 +157,30 @@ class ForeignKeyColumn
         $this->_onDelete = self::FK_DEFAULT;
     }
 
+    /**
+     * @param $name
+     * @return $this
+     */
     public function refTable($name)
     {
         $this->_refTable = $name;
         return $this;
     }
 
+    /**
+     * @param $name
+     * @return $this
+     */
     public function sourceColumn($name)
     {
         $this->_sourceColumn = $name;
         return $this;
     }
 
+    /**
+     * @param $str
+     * @return mixed
+     */
     private static function removeSchema($str)
     {
         if (strpos($str, '.') !== false) {
@@ -140,6 +191,13 @@ class ForeignKeyColumn
         }
     }
 
+    /**
+     * @param $table
+     * @param $column
+     * @param $refTable
+     * @param $refColumn
+     * @return string
+     */
     public static function formName($table, $column, $refTable, $refColumn)
     {
         $table = self::removeSchema($table);
@@ -158,6 +216,10 @@ class ForeignKeyColumn
         return $this;
     }
 
+    /**
+     * @param $name
+     * @return $this
+     */
     public function refColumn($name)
     {
         $this->_refColumn = $name;
